@@ -1,0 +1,62 @@
+﻿name: Finance Content Check
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Check Article IDs
+        run: |
+          python3 scripts/check-id.py
+
+      - name: Check Article Content
+        run: |
+          python3 scripts/check-content.py
+
+      - name: Generate Sitemap
+        run: |
+          python3 generate-sitemap.py finance-index.json \
+            --content articles-finance.json \
+            --domain https://finance.helloinsights.online \
+            --output sitemap.xml
+
+      - name: Check Data Sync
+        run: |
+          python3 scripts/check-sync.py
+
+      - name: Commit Sitemap
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add sitemap.xml
+
+          if git diff --cached --quiet; then
+            echo "No sitemap changes to commit."
+          else
+            git commit -m "Update finance sitemap [skip ci]"
+            git push
+          fi

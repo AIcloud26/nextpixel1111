@@ -1,0 +1,40 @@
+﻿name: Auto Generate Articles
+
+on:
+  schedule:
+    # 姣忓懆涓€ UTC 0:00 杩愯锛堝寳浜椂闂?闊╁浗鏃堕棿鍛ㄤ竴 8:00锛?
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # 鎵嬪姩瑙﹀彂
+
+permissions:
+  contents: write
+
+jobs:
+  generate-articles:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate new articles
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node generate-articles.js
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add articles-index.json articles-*.json article-data/*.json
+          git diff --staged --quiet || git commit -m "Auto-generate articles [skip ci]"
+          git push
+
